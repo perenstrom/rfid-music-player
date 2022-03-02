@@ -6,6 +6,9 @@ name = "pypi"
 [packages]
 spotipy = "*"
 pyairtable = "*"
+spidev = "*"
+mfrc522 = "*"
+"rpi.gpio" = "*"
 
 [dev-packages]
 
