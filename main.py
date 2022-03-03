@@ -21,8 +21,6 @@ for record in spotify_map_table.all():
   spotify_map[record["fields"]["id"]
     ] = record["fields"]["spotify_context_url"]
 
-pprint(spotify_map)
-
 sp = spotipy.Spotify(
   auth_manager=SpotifyOAuth(
     client_id=config["AUTH"]["client_id"],
@@ -33,18 +31,43 @@ sp = spotipy.Spotify(
   )
 )
 
-def getCurrentDeviceId():
-  pprint(sp.current_playback()["device"]["id"])
+def get_current_device_id():
+  device_id = sp.current_playback()["device"]["id"]
+  return device_id
 
-def playTag(tag):
+def play_tag(tag):
+  print("Playing tag", tag)
   sp.start_playback(music_player_id, spotify_map[tag])
 
-try:
+def stop_playing():
+  print("Stopping playback")
+  sp.pause_playback(music_player_id)
+
+def read_tag():
+  id = reader.read_id_no_block()
+  if(id == None):
+    id = reader.read_id_no_block()
+    if(id == None):
+      return None
+  return str(id)
+
+def main():
   print("Started")
-  while True:
-    id = reader.read_id()
-    print(id)
-    playTag(str(id))
-    time.sleep(0.5)
-finally:
-  GPIO.cleanup()
+  current_playing_tag = None
+
+  try:
+    while True:
+      tag = read_tag()
+      if(tag == None and current_playing_tag != None):
+        current_playing_tag = None
+        stop_playing()
+      elif(tag != None and tag != current_playing_tag):
+        current_playing_tag = tag
+        play_tag(tag)
+
+      time.sleep(1)
+  finally:
+    GPIO.cleanup()
+
+main()
+
