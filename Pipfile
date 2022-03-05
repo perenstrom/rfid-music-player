@@ -9,6 +9,7 @@ pyairtable = "*"
 spidev = "*"
 mfrc522 = "*"
 "rpi.gpio" = "*"
+gpiozero = "*"
 
 [dev-packages]
 

@@ -3,41 +3,84 @@ from pprint import pprint
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from pyairtable import Table
-import RPi.GPIO as GPIO
 import time
 from mfrc522 import SimpleMFRC522
+from gpiozero import Button
+from signal import pause
+import RPi.GPIO as GPIO
 
-config = configparser.ConfigParser(allow_no_value=True)
-config.read("config.cfg")
+GPIO.setwarnings(False)
+config = None
+sp = None
+reader = None
+spotify_map_table = None
+spotify_map = None
+music_player_id = None
+save_tag_btn = None
+current_playing_tag = None
+state = "reading"
+timer = None
 
-music_player_id = config["UIDS"]["player"]
+def init_config():
+  global config
+  config = configparser.ConfigParser(allow_no_value=True)
+  config.read("config.cfg")
 
-reader = SimpleMFRC522()
+def init_reader():
+  global reader
+  reader = SimpleMFRC522()
 
-spotify_map_table = Table(config["AIRTABLE"]["api_key"], config["AIRTABLE"]
-                          ["base_id"], config["AIRTABLE"]["table_name"])
-spotify_map = {}
-for record in spotify_map_table.all():
-  spotify_map[record["fields"]["id"]
-    ] = record["fields"]["spotify_context_url"]
+def init_constants():
+  global music_player_id
+  music_player_id = config["UIDS"]["player"]
 
-sp = spotipy.Spotify(
-  auth_manager=SpotifyOAuth(
-    client_id=config["AUTH"]["client_id"],
-    client_secret=config["AUTH"]["client_secret"],
-    redirect_uri=config["AUTH"]["redirect_uri"],
-    scope=config["AUTH"]["scope"],
-    open_browser=False
+def init_spotify():
+  global sp
+  sp = spotipy.Spotify(
+    auth_manager=SpotifyOAuth(
+      client_id=config["AUTH"]["client_id"],
+      client_secret=config["AUTH"]["client_secret"],
+      redirect_uri=config["AUTH"]["redirect_uri"],
+      scope=config["AUTH"]["scope"],
+      open_browser=False
+    )
   )
-)
+
+def init_airtable():
+  global spotify_map
+  global spotify_map_table
+  spotify_map_table = Table(config["AIRTABLE"]["api_key"], config["AIRTABLE"]
+                            ["base_id"], config["AIRTABLE"]["table_name"])
+  spotify_map_temp = {}
+  for record in spotify_map_table.all():
+    spotify_map_temp[record["fields"]["id"]
+      ] = {
+        'uri': record["fields"]["spotify_context_uri"], 
+        'airtable_id': record['id']
+      }
+  spotify_map = spotify_map_temp
+
+def tag_exists(tag):
+  return tag in spotify_map
 
 def get_current_device_id():
   device_id = sp.current_playback()["device"]["id"]
   return device_id
 
+def get_current_playing_uri():
+  current = sp.current_playback()
+  if(current == None):
+    return None
+  else:
+    return current["context"]["uri"]
+
+def set_state(value):
+  global state
+  state = value
+
 def play_tag(tag):
   print("Playing tag", tag)
-  sp.start_playback(music_player_id, spotify_map[tag])
+  sp.start_playback(music_player_id, spotify_map[tag]['uri'])
 
 def stop_playing():
   print("Stopping playback")
@@ -51,23 +94,96 @@ def read_tag():
       return None
   return str(id)
 
+def handle_save_btn():
+  set_state("start_saving")
+
+def init_buttons():
+  global save_tag_btn
+  save_tag_btn = Button(23)
+  save_tag_btn.when_pressed = handle_save_btn
+
+def read_and_handle_tag():
+  global current_playing_tag
+  tag = read_tag()
+  if(tag == None and current_playing_tag != None):
+    current_playing_tag = None
+    stop_playing()
+  elif(tag != None and tag != current_playing_tag):
+    if(tag_exists(tag)):
+      current_playing_tag = tag
+      play_tag(tag)
+    else:
+      print("Tag", tag, "not on record")
+
+def start_saving_mode():
+  global timer
+  timer = time.time()
+  set_state("saving")
+
+def read_and_handle_saving():
+  global timer
+  time_elapsed = time.time() - timer
+  if(time_elapsed < 10):
+    tag = read_tag()
+    if(tag != None):
+      current_playing = get_current_playing_uri()
+      if(current_playing == None):
+        print("Noting playing, will not save tag")
+      else:
+        if(tag_exists(tag)):
+          print("will update", current_playing, "for tag", tag)
+          spotify_map_table.update(spotify_map[tag]['airtable_id'], {'id': tag, 'spotify_context_uri': current_playing})
+        else:
+          print("will save", current_playing, "for tag", tag)
+          spotify_map_table.create({'id': tag, 'spotify_context_uri': current_playing})
+
+      timer = None
+      set_state("reading")
+  else:
+    set_state("reading")
+
 def main():
+  init_config()
+  init_constants()
+  init_reader()
+  init_spotify()
+  init_airtable()
+  init_buttons()
+
   print("Started")
-  current_playing_tag = None
 
-  try:
-    while True:
-      tag = read_tag()
-      if(tag == None and current_playing_tag != None):
-        current_playing_tag = None
-        stop_playing()
-      elif(tag != None and tag != current_playing_tag):
-        current_playing_tag = tag
-        play_tag(tag)
+  while True:
+    print(state)
+    if(state == "reading"):
+      read_and_handle_tag()
+    elif(state == "start_saving"):
+      start_saving_mode()
+    elif(state == "saving"):
+      read_and_handle_saving()
+    time.sleep(1)
 
-      time.sleep(1)
-  finally:
-    GPIO.cleanup()
+def troubleshoot():
+  config = init_config()
+  sp = init_spotify(config)
+  current = sp.current_playback()
+  if(current == None):
+    print("Nothing is playing")
+  else:
+    pprint(current["context"]["uri"])
 
-main()
+def button_handler():
+  print("Button pressed!")
+
+def button():
+  #test()
+  #button = Button(23)
+  #button.when_pressed = button_handler
+  pause()
+  
+try:
+  main()
+  #troubleshoot()
+  #button()
+finally:
+  GPIO.cleanup()
 
