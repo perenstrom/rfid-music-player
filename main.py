@@ -10,6 +10,7 @@ from signal import pause
 import RPi.GPIO as GPIO
 
 GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
 config = None
 sp = None
 reader = None
@@ -17,6 +18,7 @@ spotify_map_table = None
 spotify_map = None
 music_player_id = None
 save_tag_btn = None
+play_pause_btn = None
 current_playing_tag = None
 state = "reading"
 timer = None
@@ -45,12 +47,17 @@ def init_spotify():
       open_browser=False
     )
   )
+  sp.volume(100, music_player_id)
 
 def init_airtable():
   global spotify_map
   global spotify_map_table
   spotify_map_table = Table(config["AIRTABLE"]["api_key"], config["AIRTABLE"]
                             ["base_id"], config["AIRTABLE"]["table_name"])
+
+def set_airtable_map():
+  global spotify_map
+
   spotify_map_temp = {}
   for record in spotify_map_table.all():
     spotify_map_temp[record["fields"]["id"]
@@ -74,6 +81,16 @@ def get_current_playing_uri():
   else:
     return current["context"]["uri"]
 
+def get_is_playing():
+  playing = sp.current_playback()
+
+  if(playing == None):
+    return False
+  elif(playing["is_playing"]):
+    return True
+  else:
+    return False
+
 def set_state(value):
   global state
   state = value
@@ -86,6 +103,10 @@ def stop_playing():
   print("Stopping playback")
   sp.pause_playback(music_player_id)
 
+def start_playing():
+  print("Starting playback")
+  sp.start_playback(music_player_id)
+
 def read_tag():
   id = reader.read_id_no_block()
   if(id == None):
@@ -97,10 +118,16 @@ def read_tag():
 def handle_save_btn():
   set_state("start_saving")
 
+def handle_play_pause_btn():
+  set_state("play_pause")
+
 def init_buttons():
   global save_tag_btn
-  save_tag_btn = Button(23)
+  global play_pause_btn
+  save_tag_btn = Button(3)
   save_tag_btn.when_pressed = handle_save_btn
+  play_pause_btn = Button(4)
+  play_pause_btn.when_pressed = handle_play_pause_btn
 
 def read_and_handle_tag():
   global current_playing_tag
@@ -133,14 +160,23 @@ def read_and_handle_saving():
         if(tag_exists(tag)):
           print("will update", current_playing, "for tag", tag)
           spotify_map_table.update(spotify_map[tag]['airtable_id'], {'id': tag, 'spotify_context_uri': current_playing})
+          set_airtable_map()
         else:
           print("will save", current_playing, "for tag", tag)
           spotify_map_table.create({'id': tag, 'spotify_context_uri': current_playing})
+          set_airtable_map()
 
       timer = None
       set_state("reading")
   else:
     set_state("reading")
+  
+def handle_play_pause():
+  if(get_is_playing()):
+    stop_playing()
+  else:
+    start_playing()
+  set_state('reading')
 
 def main():
   init_config()
@@ -148,6 +184,7 @@ def main():
   init_reader()
   init_spotify()
   init_airtable()
+  set_airtable_map()
   init_buttons()
 
   print("Started")
@@ -160,7 +197,9 @@ def main():
       start_saving_mode()
     elif(state == "saving"):
       read_and_handle_saving()
-    time.sleep(1)
+    elif(state == "play_pause"):
+      handle_play_pause()
+    time.sleep(0.5)
 
 def troubleshoot():
   config = init_config()
