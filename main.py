@@ -218,29 +218,6 @@ def main():
     elif(state == "saving"):
       read_and_handle_saving()
     time.sleep(0.5)
-
-def troubleshoot():
-  config = init_config()
-  sp = init_spotify(config)
-  current = sp.current_playback()
-  if(current == None):
-    print("Nothing is playing")
-  else:
-    pprint(current["context"]["uri"])
-
-def button_handler():
-  print("Button pressed!")
-
-def button():
-  #test()
-  #button = Button(23)
-  #button.when_pressed = button_handler
-  pause()
   
-try:
-  main()
-  #troubleshoot()
-  #button()
-finally:
-  GPIO.cleanup()
+main()
 
