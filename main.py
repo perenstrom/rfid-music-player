@@ -19,6 +19,8 @@ spotify_map = None
 music_player_id = None
 save_tag_btn = None
 play_pause_btn = None
+previous_btn = None
+next_btn = None
 current_playing_tag = None
 state = "reading"
 timer = None
@@ -107,6 +109,14 @@ def start_playing():
   print("Starting playback")
   sp.start_playback(music_player_id)
 
+def previous_track():
+  print("Going to previous track")
+  sp.previous_track(music_player_id)
+
+def next_track():
+  print("Going to next track")
+  sp.next_track(music_player_id)
+
 def read_tag():
   id = reader.read_id_no_block()
   if(id == None):
@@ -119,15 +129,31 @@ def handle_save_btn():
   set_state("start_saving")
 
 def handle_play_pause_btn():
-  set_state("play_pause")
+  if(get_is_playing()):
+    stop_playing()
+  else:
+    start_playing()
+  set_state('reading')
+
+def handle_previous_btn():  
+  previous_track()
+
+def handle_next_btn():
+  next_track()
 
 def init_buttons():
   global save_tag_btn
   global play_pause_btn
+  global previous_btn
+  global next_btn
   save_tag_btn = Button(3)
   save_tag_btn.when_pressed = handle_save_btn
   play_pause_btn = Button(4)
   play_pause_btn.when_pressed = handle_play_pause_btn
+  previous_btn = Button(14)
+  previous_btn.when_pressed = handle_previous_btn
+  next_btn = Button(15)
+  next_btn.when_pressed = handle_next_btn
 
 def read_and_handle_tag():
   global current_playing_tag
@@ -170,13 +196,7 @@ def read_and_handle_saving():
       set_state("reading")
   else:
     set_state("reading")
-  
-def handle_play_pause():
-  if(get_is_playing()):
-    stop_playing()
-  else:
-    start_playing()
-  set_state('reading')
+
 
 def main():
   init_config()
@@ -197,8 +217,6 @@ def main():
       start_saving_mode()
     elif(state == "saving"):
       read_and_handle_saving()
-    elif(state == "play_pause"):
-      handle_play_pause()
     time.sleep(0.5)
 
 def troubleshoot():
