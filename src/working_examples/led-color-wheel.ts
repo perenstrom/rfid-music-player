@@ -1,5 +1,3 @@
-console.log("hello sudo");
-
 import { colorwheel, StripType, ws281x } from "piixel";
 
 const LEDS = 1;
