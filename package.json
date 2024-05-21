@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "onoff": "^6.0.3",
-    "piixel": "^1.0.1"
+    "piixel": "^1.0.1",
+    "socket.io": "^4.7.5"
   }
 }
