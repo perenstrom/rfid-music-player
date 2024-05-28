@@ -1,32 +1,17 @@
-import { Gpio } from "onoff";
-import { colorwheel, StripType, ws281x } from "piixel";
-
-const button = new Gpio(515, "in", "rising", { debounceTimeout: 10 });
-
-button.watch((err, value) => {
-  if (err) {
-    throw err;
-  }
-
-  flashLed();
+import Mopidy from "mopidy";
+const mopidy = new Mopidy({
+  webSocketUrl: "ws://localhost:6680/mopidy/ws/",
 });
 
-ws281x.configure({
-  gpio: 12,
-  leds: 1,
-});
+mopidy.on("state", console.log);
+mopidy.on("event", console.log);
 
-const pixels = new Uint32Array(1);
-pixels[0] = colorwheel(100);
+mopidy.on("state:online", async () => {
+  console.log("Connected to Mopidy");
 
-const flashLed = () => {
-  ws281x.render({ pixels, brightness: 0.4 });
-
-  setTimeout(() => {
-    ws281x.render({ pixels, brightness: 0 });
-  }, 200);
-};
-
-process.on("SIGINT", (_) => {
-  button.unexport();
+  // play spotify track in mopidy
+  await mopidy.tracklist.add({
+    uris: ["/usr/share/sounds/alsa/Front_Center.wav"],
+  });
+  await mopidy.playback.play();
 });

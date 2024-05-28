@@ -10,12 +10,8 @@ with socketio.SimpleClient() as sio:
   sio.connect('http://localhost:3000')
 
   try:
-    print("hello")
     while True:
-      print("Hold a tag near the reader")
       id = reader.read()
-      print("here comes the id")
-      print(id[0])
       sio.emit('card_read', {'id': id[0]})
       sleep(5)
   finally:
