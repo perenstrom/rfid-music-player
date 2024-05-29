@@ -1,13 +1,13 @@
-import Mopidy from "mopidy";
+import Mopidy from 'mopidy';
 const mopidy = new Mopidy({
-  webSocketUrl: "ws://localhost:6680/mopidy/ws/",
+  webSocketUrl: 'ws://localhost:6680/mopidy/ws/',
 });
 
-mopidy.on("state", console.log);
-mopidy.on("event", console.log);
+mopidy.on('state', console.log);
+mopidy.on('event', console.log);
 
-mopidy.on("state:online", async () => {
-  console.log("Connected to Mopidy");
+mopidy.on('state:online', async () => {
+  console.log('Connected to Mopidy');
 
   if (mopidy.tracklist && mopidy.playback) {
     // play spotify track in mopidy
