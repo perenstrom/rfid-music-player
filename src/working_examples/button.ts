@@ -1,7 +1,7 @@
-import { Gpio } from "onoff";
-import { colorwheel, StripType, ws281x } from "piixel";
+import { Gpio } from 'onoff';
+import { colorwheel, ws281x } from 'piixel';
 
-const button = new Gpio(515, "in", "rising", { debounceTimeout: 10 });
+const button = new Gpio(515, 'in', 'rising', { debounceTimeout: 10 });
 
 button.watch((err, value) => {
   if (err) {
@@ -27,6 +27,6 @@ const flashLed = () => {
   }, 200);
 };
 
-process.on("SIGINT", (_) => {
+process.on('SIGINT', (_) => {
   button.unexport();
 });
