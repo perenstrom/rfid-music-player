@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "main": "tsx ./src/main.ts",
     "dev": "tsx watch ./src/main.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "push": "scp -r -i ~/.ssh/id_ed25519_bontouch src perenstrom@172.20.10.14:/home/perenstrom/rfid-music-player/"
+    "push": "scp -r -i ~/.ssh/id_ed25519_bontouch src perenstrom@192.168.50.18:/home/perenstrom/rfid-music-player/"
   },
   "author": "Per Enström <enstrom.per@gmail.com> (https://www.perenstrom.com/)",
   "license": "MIT",
